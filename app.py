@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 import psycopg2
 import psycopg2.extras
 
@@ -16,13 +16,31 @@ def get_db_connection():
 
 @app.route('/')
 def index():
+    return render_template('index.html')
+
+@app.route('/get_peliculas')
+def get_peliculas():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
     cur.execute('SELECT * FROM peliculas;')
     peliculas = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template('index.html', peliculas=peliculas)
+
+    # Formatear los datos en una lista de diccionarios
+    peliculas_dict = []
+    for pelicula in peliculas:
+        peliculas_dict.append({
+            'titulo': pelicula['titulo'],
+            'director': pelicula['director'],
+            'ano': pelicula['ano'],
+            'genero': pelicula['genero'],
+            'duracion': pelicula['duracion'],
+            'img_url': pelicula['img_url']
+        })
+
+    return jsonify({"peliculas": peliculas_dict})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
