@@ -1,0 +1,177 @@
+Fecha de creación: 6-8-2024
+Tecnologias: Python, Flask y PostgreSQL
+Objetivos: 
+-Disponer en un archivo html de los datos obtenidos por el framework flask de la base de datos postgresql
+-Agregar mas funciones y unificarlas todas
+
+hasta ahora tenemos
+insert.py: carga un archivo de texto con las peliculas directamente a la base de datos
+
+app.py: funcion principal del programa usar flash para consultar los datos de la base de datos
+
+
+-Estoy desarrollando un script el cual usa la API Dde TMDB la cual:
+recibe titulo de pelicula, devuelve el poster de la pelicula
+
+En el html quiero que de alguna manera cada pelicula en la base de datos aparezca acompañada
+de su poster. arriba y debajo. 
+
+Podre hacer directamente solicitudes desde el index.html al archivo tmdb API.py?
+
+hacer pequeño frontend con js y poner el fetch de la api creada con flask
+
+
+pelisdb/
+	templates/
+		index.html
+	app.py
+	insert.py
+	peliculas.txt
+	README.md
+	tmdb API.py
+
+Link del proyecto:
+https://github.com/RossiPatricio/flaskproject2
+
+________________________________________________________________________________________________________________________________________________________________________________________
+app.py
+
+from flask import Flask, render_template
+import psycopg2
+import psycopg2.extras
+
+app = Flask(__name__)
+
+def get_db_connection():
+    conn = psycopg2.connect(
+        host="localhost",
+        database="peliculas_db",
+        user="postgres",
+        password="010001101000",
+        options='-c client_encoding=UTF8'
+    )
+    return conn
+
+@app.route('/')
+def index():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute('SELECT * FROM peliculas;')
+    peliculas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('index.html', peliculas=peliculas)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+________________________________________________________________________________________________________________________________________________________________________________________
+insert.py
+
+import psycopg2
+
+# Datos de conexión a la base de datos
+conn = psycopg2.connect(
+     database="peliculas_db",
+    user="postgres",
+    password="010001101000",
+    host="localhost",
+    port="5432"
+)
+
+# Función para insertar una película en la base de datos con todos los datos
+def insertar_pelicula(conn, titulo, director, ano, genero, duracion):
+    with conn.cursor() as cur:
+        cur.execute(
+             "INSERT INTO peliculas (titulo, director, ano, genero, duracion) VALUES (%s, %s, %s, %s, %s)",
+            (titulo, director, ano, genero, duracion)
+         )
+        conn.commit()
+
+# Leer las películas desde el archivo .txt
+with open('peliculas.txt', 'r') as archivo:
+     for linea in archivo:
+        datos = linea.strip().split(',')
+        titulo = datos[0].strip()
+        director = datos[1].strip()
+        ano = int(datos[2].strip())
+        genero = datos[3].strip()
+        duracion = int(datos[4].strip())
+        insertar_pelicula(conn, titulo, director, ano, genero, duracion)
+
+# Cerrar la conexión a la base de datos
+conn.close()
+
+________________________________________________________________________________________________________________________________________________________________________________________
+index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Películas</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            font-size: 1.5em;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lista de Películas</h1>
+    <ul>
+        {% for pelicula in peliculas %}
+            <li>{{ pelicula['titulo'] }} ({{ pelicula['ano'] }}) - {{ pelicula['director'] }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+
+
+________________________________________________________________________________________________________________________________________________________________________________________
+tmdb API.py
+
+import requests
+import json
+
+def obtener_poster_url(movie_id):
+    api_key = "14dd84c8569641313e0340c876d913f0"  # Replace with your TMDb API Key
+    base_url = "https://api.themoviedb.org/3/movie/"
+    url = f"{base_url}{movie_id}?api_key={api_key}&language=en-US"
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for non-200 status codes
+
+        data = json.loads(response.text)
+
+        if 'poster_path' in data:
+            image_base_url = "https://image.tmdb.org/t/p/w500"
+            poster_url = f"{image_base_url}{data['poster_path']}"
+            return poster_url
+        else:
+            return "No poster found for this movie."
+
+    except requests.exceptions.RequestException as e:
+        # Handle network errors, timeouts, etc.
+        return f"Error retrieving movie data: {e}"
+
+# Example usage
+# movie_id = 550  # Try a different ID in case 540 is incorrect
+# poster_url = obtener_poster_url(movie_id)
+# print(poster_url)
