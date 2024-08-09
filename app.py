@@ -27,6 +27,7 @@ def get_peliculas():
     cur.close()
     conn.close()
 
+
     # Formatear los datos en una lista de diccionarios
     peliculas_dict = []
     for pelicula in peliculas:

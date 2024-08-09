@@ -1,0 +1,313 @@
+Fecha de creacion: 6-8-2024
+
+
+INSERT.PY
+
+-lee peliculas.txt
+-las inserta en una base de datos junto con los datos y el poster
+
+
+APP.PY
+
+(Flask framework)
+-Coneccion y solicitud a la base de datos
+-formatea los datos en una lista de diccionarios
+-los devuelve
+
+HTML/JS
+
+-JS a travez de un fetch recibe los datos del backend
+-y finalmente los muestra en el html.
+
+
+_______________________________________________________________________________________________________________________________________________________________________________________________________________
+app.py 
+
+from flask import Flask, render_template, jsonify
+import psycopg2
+import psycopg2.extras
+
+app = Flask(__name__)
+
+def get_db_connection():
+    conn = psycopg2.connect(
+        host="localhost",
+        database="peliculas_db",
+        user="postgres",
+        password="010001101000",
+        options='-c client_encoding=UTF8'
+    )
+    return conn
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/get_peliculas')
+def get_peliculas():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+    cur.execute('SELECT * FROM peliculas;')
+    peliculas = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    # Formatear los datos en una lista de diccionarios
+    peliculas_dict = []
+    for pelicula in peliculas:
+        peliculas_dict.append({
+            'titulo': pelicula['titulo'],
+            'pais': pelicula['pais'],
+            'director': pelicula['director'],
+            'img_url': pelicula['img_url']
+        })
+
+    return jsonify({"peliculas": peliculas_dict})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+_______________________________________________________________________________________________________________________________________________________________________________________________________________
+insert.py
+
+import requests
+import psycopg2
+
+diccionario = {
+    'titulo': '',
+    'pais': '',
+    'director': '',
+    'img_url': '',
+}
+
+def obtener_informacion_por_titulo(titulo):
+    api_key = "14dd84c8569641313e0340c876d913f0"
+    search_url = f"https://api.themoviedb.org/3/search/movie?api_key={api_key}&query={titulo}"
+    
+    try:
+        search_response = requests.get(search_url)
+        search_response.raise_for_status()
+        search_data = search_response.json()
+
+        if search_data['results']:
+            movie_id = search_data['results'][0]['id']
+
+            base_url = "https://api.themoviedb.org/3/movie/"
+            movie_url = f"{base_url}{movie_id}?api_key={api_key}&language=en-US"
+            movie_response = requests.get(movie_url)
+            movie_response.raise_for_status()
+            movie_data = movie_response.json()
+
+            title = movie_data.get('title', 'N/A')
+            countries = [country['name'] for country in movie_data.get('production_countries', [])]
+            overview = movie_data.get('overview', 'No overview available.')
+            poster_path = movie_data.get('poster_path', None)
+
+            if poster_path:
+                image_base_url = "https://image.tmdb.org/t/p/w500"
+                poster_url = f"{image_base_url}{poster_path}"
+            else:
+                poster_url = None
+
+            # Llenar el diccionario con los datos obtenidos
+            diccionario['titulo'] = title
+            diccionario["pais"] = countries
+            diccionario["director"] = overview
+            diccionario["img_url"] = poster_url
+
+            return diccionario
+        else:
+            return None
+        
+    except requests.exceptions.RequestException as e:
+        return None
+
+
+def insertar_pelicula(conn, titulo, pais, director, img_url):
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO peliculas (titulo, pais, director, img_url) VALUES (%s, %s, %s, %s)",
+            (titulo, pais, director, img_url)
+        )
+        conn.commit()
+
+conn = psycopg2.connect(
+    database="peliculas_db",
+    user="postgres",
+    password="010001101000",
+    host="localhost",
+    port="5432"
+)
+
+with open('peliculas.txt', 'r') as archivo:
+    for linea in archivo:
+        linea = linea.strip()
+        resultado = obtener_informacion_por_titulo(linea)
+        
+        if resultado:
+            titulo = resultado['titulo']
+            pais = ', '.join(resultado['pais'])  
+            director = resultado['director']
+            img_url = resultado['img_url']
+            insertar_pelicula(conn, titulo, pais, director, img_url)
+
+conn.close()
+
+_______________________________________________________________________________________________________________________________________________________________________________________________________________
+html + js
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Películas</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            font-size: 1.5em;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        img {
+            width: 100px;
+            height: auto;
+            margin-right: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Lista de Películas</h1>
+    <ul></ul>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>
+
+JS:
+
+document.addEventListener("DOMContentLoaded", function() {
+    fetch("/get_peliculas")
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        const ul = document.querySelector("ul");
+        ul.innerHTML = "";
+
+        data.peliculas.forEach(pelicula => {
+            const li = document.createElement("li");
+
+            if (pelicula.img_url) {
+                const img = document.createElement("img");
+                img.src = pelicula.img_url;
+                img.alt = `Poster de ${pelicula.titulo}`;
+                li.appendChild(img);
+            }
+
+            const texto = `${pelicula.titulo} (${pelicula.pais}) - ${pelicula.director}`;
+            li.appendChild(document.createTextNode(texto));
+
+            ul.appendChild(li);
+        });
+    })
+    .catch(error => console.error("Error fetching data:", error));
+});
+
+
+
+
+_______________________________________________________________________________________________________________________________________________________________________________________________________________
+_______________________________________________________________________________________________________________________________________________________________________________________________________________
+
+
+
+
+
+
+
+Proximas versiones:
+
+- Sistema de Recomendaciones Personalizadas:
+
+Implementa un sistema que sugiera películas basadas en el historial de visualización o 
+en las películas que los usuarios han marcado como favoritas. Podrías utilizar un algoritmo de 
+filtrado colaborativo o basado en contenido para mejorar la experiencia del usuario.
+
+- Búsqueda Avanzada con Filtros:
+
+Agrega una función de búsqueda avanzada que permita a los usuarios filtrar películas por diferentes 
+criterios como género, año de lanzamiento, país, duración, etc. 
+Esto mejorará la capacidad de los usuarios para encontrar exactamente lo que buscan.
+
+- Página de Detalles de la Película:
+
+Amplía la información disponible para cada película. 
+Podrías incluir una página de detalles para cada película con sinopsis extendida, elenco, 
+críticas de usuarios, trailers, y una sección de "películas relacionadas".
+
+- Valoraciones y Comentarios de Usuarios:
+
+Permite que los usuarios valoren las películas y dejen comentarios. 
+Esto podría fomentar la interacción y proporcionar contenido adicional para los usuarios.
+
+- Listas Personalizadas de Películas:
+
+Da la opción a los usuarios de crear y compartir listas personalizadas de películas, como 
+"Favoritas de todos los tiempos", "Para ver en Halloween", etc. 
+Esto podría generar una comunidad activa dentro de la aplicación.
+
+
+para ver en halloween: -de tu lista-
+		       -de lista de recomendados de halloween basandote en tus gustos
+		       -de lista general de clasicos de halloween
+
+- Notificaciones de Estrenos y Noticias:
+
+Integra notificaciones para avisar a los usuarios sobre estrenos de películas nuevas que 
+podrían interesarles, o sobre noticias relacionadas con la industria del cine.
+
+- Sincronización de Favoritos y Historial entre Dispositivos:
+
+Permite a los usuarios sincronizar sus listas de favoritos y el historial de visualización 
+entre diferentes dispositivos, de manera que puedan continuar donde lo dejaron, 
+sin importar desde dónde accedan.
+
+
+
+IMPORTANTE:
+
+estoy pensando que el sistema de recomendacion de peliculas podria ser posiblemente la funcion central
+/* dame una lista de peliculas que te gusten y antes de procesarla la reemplazare por 
+titulo similares que puedan considerarse recomendaciones personalizadas basandose en el gusto del user 
+pero supongo que para estoy voy a necesitar una ia asi que lo veo algo dificil*/
+
+
+
+FUNCION 1- ¿QUE VER?
+FUNCION 2- COLECCIONES
+
+
+
+
+Me imagino una view de halloween con fondo de halloween y navidad lo mismo
+
+
+
