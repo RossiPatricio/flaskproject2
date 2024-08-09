@@ -32,10 +32,8 @@ def get_peliculas():
     for pelicula in peliculas:
         peliculas_dict.append({
             'titulo': pelicula['titulo'],
+            'pais': pelicula['pais'],
             'director': pelicula['director'],
-            'ano': pelicula['ano'],
-            'genero': pelicula['genero'],
-            'duracion': pelicula['duracion'],
             'img_url': pelicula['img_url']
         })
 

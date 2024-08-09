@@ -1,9 +1,42 @@
-The Shawshank Redemption, Frank Darabont, 1994, Drama, 142
-The Dark Knight, Christopher Nolan, 2008, Action/Thriller, 152
-12 Angry Men, Sidney Lumet, 1957, Drama, 96
-Schindler's List, Steven Spielberg, 1993, Drama/History, 195
-Pulp Fiction, Quentin Tarantino, 1994, Crime/Drama, 154
-The Lord of the Rings: The Return of the King, Peter Jackson, 2003, Adventure/Fantasy, 201
-Titanic, James Cameron, 1997, Drama/Romance, 194
-A Clockwork Orange, Stanley Kubrick, 1971, Ciencia ficción/Drama, 156
-The Godfather, Francis Ford Coppola, 1972, Crimen/Drama, 175
+titanic
+terminator
+the godfather
+harry potter
+the lord of the rings
+scooby doo
+scoobydoo
+Fast and furious 
+Dead poets society
+Scent of a woman 
+Atrapame si puedes 
+Die hard
+Troy
+Gladiator
+The curious case of benjamin button 
+Beetlejuice 
+Insterstellar
+The butterfly effect
+Midsommar
+Harry potter 
+Fight club
+Spiderman
+Scarface 
+Apocalypto
+American beauty
+The last samurai
+Taxi driver
+The truman show
+Heathers 
+Jurassic park
+Shutter island
+The boy in striped pajamas
+Back to the future
+Forrest gump
+Eternal Sunshine of the Spotless Mind
+Edward Scissorhands
+Interview with the vampire
+Donnie Darko
+Home alone
+La terminal 
+I.A. inteligencia artificial
+Big Fish 
